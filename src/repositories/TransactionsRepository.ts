@@ -8,33 +8,47 @@ interface Balance {
   total: number;
 }
 
+enum Type {
+  INCOME = 'income',
+  OUTCOME = 'outcome',
+}
+
+interface TypeDTO {
+  income: number;
+  outcome: number;
+}
+
 @EntityRepository(Transaction)
 class TransactionsRepository extends Repository<Transaction> {
-  public async getBalance(): Promise<Balance> {
-    const transactions = await this.find();
-
-    const { income, outcome } = transactions.reduce(
+  private calculateBalance(transactions: Array<Transaction>): TypeDTO {
+    return transactions.reduce(
       (accumulator, transaction) => {
         switch (transaction.type) {
-          case 'income':
+          case Type.INCOME:
             accumulator.income += Number(transaction.value);
             break;
-          case 'outcome':
+          case Type.OUTCOME:
             accumulator.outcome += Number(transaction.value);
             break;
           default:
             break;
         }
+
         return accumulator;
       },
-      {
-        income: 0,
-        outcome: 0,
-        total: 0,
-      },
+      { income: 0, outcome: 0 },
     );
+  }
+
+  public async getBalance(): Promise<Balance> {
+    const transactions = await this.find();
+
+    const { income, outcome } = this.calculateBalance(transactions);
     const total = income - outcome;
-    return { income, outcome, total };
+
+    const balance: Balance = { income, outcome, total };
+
+    return balance;
   }
 }
 
